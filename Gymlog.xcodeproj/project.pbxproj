@@ -11,6 +11,11 @@
 		A00000000000000000000012 /* TrainingEditorScreen.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000002 /* TrainingEditorScreen.swift */; };
 		A00000000000000000000013 /* Assets.xcassets in Resources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000003 /* Assets.xcassets */; };
 		A00000000000000000000014 /* GymlogTests.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000004 /* GymlogTests.swift */; };
+		A00000000000000000000015 /* WorkoutNote.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000007 /* WorkoutNote.swift */; };
+		A00000000000000000000016 /* ExerciseLibraryEntry.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000008 /* ExerciseLibraryEntry.swift */; };
+		A00000000000000000000017 /* ExerciseLibraryCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000009 /* ExerciseLibraryCatalog.swift */; };
+		A00000000000000000000018 /* ExerciseBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000A /* ExerciseBlock.swift */; };
+		A00000000000000000000019 /* PlanLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000B /* PlanLine.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -30,6 +35,11 @@
 		A00000000000000000000004 /* GymlogTests.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = GymlogTests.swift; sourceTree = "<group>"; };
 		A00000000000000000000005 /* Gymlog.app */ = {isa = PBXFileReference; explicitFileType = wrapper.application; includeInIndex = 0; path = Gymlog.app; sourceTree = BUILT_PRODUCTS_DIR; };
 		A00000000000000000000006 /* GymlogTests.xctest */ = {isa = PBXFileReference; explicitFileType = wrapper.cfbundle; includeInIndex = 0; path = GymlogTests.xctest; sourceTree = BUILT_PRODUCTS_DIR; };
+		A00000000000000000000007 /* WorkoutNote.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutNote.swift; sourceTree = "<group>"; };
+		A00000000000000000000008 /* ExerciseLibraryEntry.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLibraryEntry.swift; sourceTree = "<group>"; };
+		A00000000000000000000009 /* ExerciseLibraryCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLibraryCatalog.swift; sourceTree = "<group>"; };
+		A0000000000000000000000A /* ExerciseBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseBlock.swift; sourceTree = "<group>"; };
+		A0000000000000000000000B /* PlanLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanLine.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -63,7 +73,9 @@
 			isa = PBXGroup;
 			children = (
 				A00000000000000000000064 /* App */,
+				A00000000000000000000067 /* Domain */,
 				A00000000000000000000065 /* Features */,
+				A00000000000000000000068 /* Persistence */,
 				A00000000000000000000003 /* Assets.xcassets */,
 			);
 			path = Gymlog;
@@ -108,6 +120,41 @@
 				A00000000000000000000002 /* TrainingEditorScreen.swift */,
 			);
 			path = TrainingEditor;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000067 /* Domain */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000069 /* ExerciseLibrary */,
+				A0000000000000000000006A /* Workout */,
+			);
+			path = Domain;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000068 /* Persistence */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000008 /* ExerciseLibraryEntry.swift */,
+				A00000000000000000000007 /* WorkoutNote.swift */,
+			);
+			path = Persistence;
+			sourceTree = "<group>";
+		};
+		A00000000000000000000069 /* ExerciseLibrary */ = {
+			isa = PBXGroup;
+			children = (
+				A00000000000000000000009 /* ExerciseLibraryCatalog.swift */,
+			);
+			path = ExerciseLibrary;
+			sourceTree = "<group>";
+		};
+		A0000000000000000000006A /* Workout */ = {
+			isa = PBXGroup;
+			children = (
+				A0000000000000000000000A /* ExerciseBlock.swift */,
+				A0000000000000000000000B /* PlanLine.swift */,
+			);
+			path = Workout;
 			sourceTree = "<group>";
 		};
 /* End PBXGroup section */
@@ -210,7 +257,12 @@
 			buildActionMask = 2147483647;
 			files = (
 				A00000000000000000000011 /* GymlogApp.swift in Sources */,
+				A00000000000000000000017 /* ExerciseLibraryCatalog.swift in Sources */,
+				A00000000000000000000016 /* ExerciseLibraryEntry.swift in Sources */,
+				A00000000000000000000018 /* ExerciseBlock.swift in Sources */,
+				A00000000000000000000019 /* PlanLine.swift in Sources */,
 				A00000000000000000000012 /* TrainingEditorScreen.swift in Sources */,
+				A00000000000000000000015 /* WorkoutNote.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;
 		};
@@ -295,6 +347,7 @@
 				CODE_SIGN_STYLE = Automatic;
 				CURRENT_PROJECT_VERSION = 1;
 				DEVELOPMENT_ASSET_PATHS = "\"Gymlog/Preview Content\"";
+				ENABLE_TESTABILITY = YES;
 				GENERATE_INFOPLIST_FILE = YES;
 				INFOPLIST_KEY_UIApplicationSceneManifest_Generation = YES;
 				INFOPLIST_KEY_UIApplicationSupportsIndirectInputEvents = YES;
