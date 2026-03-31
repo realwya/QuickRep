@@ -67,4 +67,91 @@ final class GymlogTests: XCTestCase {
         XCTAssertTrue(entries.allSatisfy { $0.isBuiltin })
         XCTAssertTrue(entries.contains { $0.name == "卧推" })
     }
+
+    func testWorkoutNoteBuildsLineBasedTextSnapshotFromRawText() {
+        let rawText = """
+        @卧推
+        20 x 8 x 5
+
+        最后两组感觉很重
+        """
+        let note = WorkoutNote(rawText: rawText)
+
+        let snapshot = note.textSnapshot()
+
+        XCTAssertEqual(
+            snapshot.lines.map(\.rawText),
+            ["@卧推", "20 x 8 x 5", "", "最后两组感觉很重"]
+        )
+        XCTAssertEqual(snapshot.lines.map(\.index), [0, 1, 2, 3])
+        XCTAssertEqual(snapshot.rawText, rawText)
+    }
+
+    func testWorkoutNoteReconcilesSnapshotPreservingLineIDsForUnchangedLines() {
+        let note = WorkoutNote(
+            rawText: """
+            @卧推
+            20 x 8 x 5
+            最后两组感觉很重
+            """
+        )
+        let originalSnapshot = note.textSnapshot()
+
+        note.rawText = """
+        @卧推
+        20 x 8 x 5
+        22.5 x 6 x 3
+        最后两组感觉很重
+        """
+
+        let reconciledSnapshot = note.textSnapshot(reconcilingWith: originalSnapshot)
+
+        XCTAssertEqual(reconciledSnapshot.lines.count, 4)
+        XCTAssertEqual(reconciledSnapshot.lines[0].id, originalSnapshot.lines[0].id)
+        XCTAssertEqual(reconciledSnapshot.lines[1].id, originalSnapshot.lines[1].id)
+        XCTAssertNotEqual(reconciledSnapshot.lines[2].id, originalSnapshot.lines[2].id)
+        XCTAssertEqual(reconciledSnapshot.lines[3].id, originalSnapshot.lines[2].id)
+    }
+
+    func testWorkoutNoteReconcilesSnapshotAfterLineDeletion() {
+        let note = WorkoutNote(
+            rawText: """
+            @卧推
+            20 x 8 x 5
+            22.5 x 6 x 3
+            最后两组感觉很重
+            """
+        )
+        let originalSnapshot = note.textSnapshot()
+
+        note.rawText = """
+        @卧推
+        22.5 x 6 x 3
+        最后两组感觉很重
+        """
+
+        let reconciledSnapshot = note.textSnapshot(reconcilingWith: originalSnapshot)
+
+        XCTAssertEqual(reconciledSnapshot.lines.count, 3)
+        XCTAssertEqual(reconciledSnapshot.lines[0].id, originalSnapshot.lines[0].id)
+        XCTAssertEqual(reconciledSnapshot.lines[1].id, originalSnapshot.lines[2].id)
+        XCTAssertEqual(reconciledSnapshot.lines[2].id, originalSnapshot.lines[3].id)
+    }
+
+    func testWorkoutNoteCanRebuildSnapshotFromRawTextWithoutCachedDerivedState() {
+        let rawText = """
+        @卧推
+        20 x 8 x 5 3/5
+        最后两组感觉很重
+        """
+        let note = WorkoutNote(rawText: rawText)
+
+        let firstSnapshot = note.textSnapshot()
+        let rebuiltSnapshot = note.textSnapshot()
+
+        XCTAssertEqual(firstSnapshot.rawText, rawText)
+        XCTAssertEqual(rebuiltSnapshot.rawText, rawText)
+        XCTAssertEqual(firstSnapshot.lines.map(\.rawText), rebuiltSnapshot.lines.map(\.rawText))
+        XCTAssertEqual(firstSnapshot.lines.map(\.index), rebuiltSnapshot.lines.map(\.index))
+    }
 }

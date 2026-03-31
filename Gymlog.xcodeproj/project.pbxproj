@@ -16,6 +16,7 @@
 		A00000000000000000000017 /* ExerciseLibraryCatalog.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000009 /* ExerciseLibraryCatalog.swift */; };
 		A00000000000000000000018 /* ExerciseBlock.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000A /* ExerciseBlock.swift */; };
 		A00000000000000000000019 /* PlanLine.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000B /* PlanLine.swift */; };
+		A0000000000000000000001A /* WorkoutTextSnapshot.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000C /* WorkoutTextSnapshot.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -40,6 +41,7 @@
 		A00000000000000000000009 /* ExerciseLibraryCatalog.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseLibraryCatalog.swift; sourceTree = "<group>"; };
 		A0000000000000000000000A /* ExerciseBlock.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = ExerciseBlock.swift; sourceTree = "<group>"; };
 		A0000000000000000000000B /* PlanLine.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = PlanLine.swift; sourceTree = "<group>"; };
+		A0000000000000000000000C /* WorkoutTextSnapshot.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTextSnapshot.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -153,6 +155,7 @@
 			children = (
 				A0000000000000000000000A /* ExerciseBlock.swift */,
 				A0000000000000000000000B /* PlanLine.swift */,
+				A0000000000000000000000C /* WorkoutTextSnapshot.swift */,
 			);
 			path = Workout;
 			sourceTree = "<group>";
@@ -262,6 +265,7 @@
 				A00000000000000000000018 /* ExerciseBlock.swift in Sources */,
 				A00000000000000000000019 /* PlanLine.swift in Sources */,
 				A00000000000000000000012 /* TrainingEditorScreen.swift in Sources */,
+				A0000000000000000000001A /* WorkoutTextSnapshot.swift in Sources */,
 				A00000000000000000000015 /* WorkoutNote.swift in Sources */,
 			);
 			runOnlyForDeploymentPostprocessing = 0;

@@ -20,4 +20,15 @@ final class WorkoutNote {
         self.rawText = rawText
         self.updatedAt = updatedAt
     }
+
+    func textSnapshot(
+        reconcilingWith previous: WorkoutTextSnapshot? = nil
+    ) -> WorkoutTextSnapshot {
+        // The runtime line snapshot is always rebuilt from rawText rather than
+        // stored separately, so rawText remains the only persisted source.
+        WorkoutTextSnapshot(
+            rawText: rawText,
+            reconcilingWith: previous
+        )
+    }
 }
