@@ -142,13 +142,12 @@ extension TrainingTextEditor {
                 return [:]
             }
 
-            let linesByIndex = Dictionary(
-                uniqueKeysWithValues: TrainingEditorTextLayout.lines(in: textView.text).map { ($0.index, $0) }
-            )
+            let lines = TrainingEditorTextLayout.lines(in: textView.text)
 
             return parent.trackedLineIndices.reduce(into: [:]) { result, lineIndex in
                 guard
-                    let line = linesByIndex[lineIndex],
+                    lines.indices.contains(lineIndex),
+                    let line = lines[safe: lineIndex],
                     let rect = lineRect(for: line, in: textView)
                 else {
                     return
@@ -162,30 +161,46 @@ extension TrainingTextEditor {
             for line: TrainingEditorLine,
             in textView: UITextView
         ) -> CGRect? {
-            guard
-                let startPosition = textView.position(
-                    from: textView.beginningOfDocument,
-                    offset: line.contentRange.location
-                )
-            else {
+            guard line.contentRange.length > 0 else {
                 return nil
             }
 
-            let caretRect = textView.caretRect(for: startPosition)
-            guard !caretRect.isNull else {
+            let textLength = (textView.text as NSString).length
+            guard line.contentRange.location < textLength else {
                 return nil
             }
 
+            let layoutManager = textView.layoutManager
             let insets = textView.textContainerInset
             let horizontalPadding = textView.textContainer.lineFragmentPadding
-            let lineHeight = max(caretRect.height, textView.font?.lineHeight ?? 0)
+            let glyphRange = layoutManager.glyphRange(
+                forCharacterRange: NSRange(location: line.contentRange.location, length: 1),
+                actualCharacterRange: nil
+            )
+            guard glyphRange.length > 0 else {
+                return nil
+            }
+
+            let lineFragmentRect = layoutManager.lineFragmentUsedRect(
+                forGlyphAt: glyphRange.location,
+                effectiveRange: nil,
+                withoutAdditionalLayout: true
+            )
+            let visibleMinY = lineFragmentRect.minY + insets.top - textView.contentOffset.y
+            let lineHeight = max(lineFragmentRect.height, textView.font?.lineHeight ?? 0)
 
             return CGRect(
                 x: insets.left + horizontalPadding,
-                y: caretRect.minY,
+                y: visibleMinY,
                 width: max(textView.bounds.width - insets.left - insets.right - horizontalPadding * 2, 0),
                 height: lineHeight
             )
         }
+    }
+}
+
+private extension Array {
+    subscript(safe index: Int) -> Element? {
+        indices.contains(index) ? self[index] : nil
     }
 }

@@ -17,6 +17,9 @@ struct TrainingEditorSelectionContext {
 }
 
 enum TrainingEditorTextLayout {
+    private static var cachedText: String?
+    private static var cachedLines: [TrainingEditorLine] = []
+
     static func selectionContext(
         text: String,
         selectedRange: NSRange,
@@ -49,6 +52,17 @@ enum TrainingEditorTextLayout {
     }
 
     static func lines(in text: String) -> [TrainingEditorLine] {
+        if cachedText == text {
+            return cachedLines
+        }
+
+        let lines = buildLines(in: text)
+        cachedText = text
+        cachedLines = lines
+        return lines
+    }
+
+    private static func buildLines(in text: String) -> [TrainingEditorLine] {
         let nsText = text as NSString
         let length = nsText.length
         var lines: [TrainingEditorLine] = []

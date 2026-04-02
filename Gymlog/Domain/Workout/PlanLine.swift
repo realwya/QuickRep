@@ -27,16 +27,4 @@ struct PlanLine: Identifiable, Hashable {
         self.rawText = rawText
     }
 
-    var state: PlanLineState {
-        .planned
-    }
-
-    func state(isFinalizedRecord: Bool) -> PlanLineState {
-        isFinalizedRecord ? .finalized : .planned
-    }
-}
-
-enum PlanLineState: Equatable {
-    case planned
-    case finalized
 }

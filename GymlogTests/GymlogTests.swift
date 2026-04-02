@@ -60,20 +60,6 @@ final class GymlogTests: XCTestCase {
         XCTAssertEqual(block.endLineIndex, 3)
     }
 
-    func testPlanLineSupportsFinalizedSemanticStateWithContext() {
-        let line = PlanLine(
-            lineIndex: 1,
-            exerciseBlockId: UUID(),
-            weight: 20,
-            reps: 8,
-            targetSets: 4,
-            rawText: "20 x 8 x 4"
-        )
-
-        XCTAssertEqual(line.state, .planned)
-        XCTAssertEqual(line.state(isFinalizedRecord: true), .finalized)
-    }
-
     func testBuiltinExerciseLibraryEntriesAreMarkedBuiltin() {
         let entries = ExerciseLibraryCatalog.builtinEntries()
 
@@ -505,6 +491,85 @@ final class GymlogTests: XCTestCase {
         XCTAssertEqual(reconciledState.completedSets(forLineIndex: 2), 2)
     }
 
+    @MainActor
+    func testTrainingEditorSessionRetainsPlanLineAndProgressDuringInvalidIntermediateEdit() {
+        let session = TrainingEditorSession(
+            initialRawText: """
+            @卧推
+            20 x 8 x 5
+            """
+        )
+
+        session.incrementProgress(for: session.parsedText.planLines[0])
+        session.handleEditedText(
+            """
+            @卧推
+            20 x 8 x
+            """,
+            editingLineIndex: 1
+        )
+
+        XCTAssertEqual(
+            session.noteText,
+            """
+            @卧推
+            20 x 8 x
+            """
+        )
+        XCTAssertEqual(session.parsedText.planLines.map(\.rawText), ["20 x 8 x 5"])
+        XCTAssertEqual(session.draftProgressState.completedSets(forLineIndex: 1), 1)
+    }
+
+    @MainActor
+    func testTrainingEditorSessionClearsProgressWhenInvalidPlanLineIsCommittedOnLineExit() {
+        let session = TrainingEditorSession(
+            initialRawText: """
+            @卧推
+            20 x 8 x 5
+            """
+        )
+
+        session.incrementProgress(for: session.parsedText.planLines[0])
+        session.handleEditedText(
+            """
+            @卧推
+            20 x 8 x
+            """,
+            editingLineIndex: 1
+        )
+        session.handleLineExit(from: TrainingEditorTextLayout.lines(in: session.noteText)[1])
+
+        XCTAssertTrue(session.parsedText.planLines.isEmpty)
+        XCTAssertTrue(session.draftProgressState.isEmpty)
+    }
+
+    @MainActor
+    func testTrainingEditorSessionClearsProgressWhenCommittedPlanLineDefinitionChanges() {
+        let session = TrainingEditorSession(
+            initialRawText: """
+            @卧推
+            20 x 8 x 5
+            """
+        )
+
+        session.incrementProgress(for: session.parsedText.planLines[0])
+        session.handleEditedText(
+            """
+            @卧推
+            20 x 8 x 4
+            """,
+            editingLineIndex: 1
+        )
+
+        XCTAssertEqual(session.parsedText.planLines.map(\.rawText), ["20 x 8 x 5"])
+        XCTAssertEqual(session.draftProgressState.completedSets(forLineIndex: 1), 1)
+
+        session.handleLineExit(from: TrainingEditorTextLayout.lines(in: session.noteText)[1])
+
+        XCTAssertEqual(session.parsedText.planLines.map(\.rawText), ["20 x 8 x 4"])
+        XCTAssertTrue(session.draftProgressState.isEmpty)
+    }
+
     func testWorkoutTextProgressUpdaterFinalizesWorkoutUsingDraftProgress() {
         let parseResult = WorkoutTextParser.parse(
             rawText: """
@@ -535,6 +600,165 @@ final class GymlogTests: XCTestCase {
             22.5 x 6 x 3
             最后两组感觉很重
             """
+        )
+    }
+
+    @MainActor
+    func testTrainingEditorSessionDebouncesTextPersistenceAndSavesLatestState() async {
+        let note = WorkoutNote(
+            rawText: """
+            @卧推
+            20 x 8 x 5
+            """
+        )
+        let session = TrainingEditorSession(
+            initialRawText: note.rawText,
+            saveDebounceNanoseconds: 50_000_000
+        )
+        var persistedStates: [TrainingEditorSession.PersistedState] = []
+
+        session.load(from: note, force: true) { _, state in
+            persistedStates.append(state)
+        }
+
+        session.handleEditedText(
+            """
+            @卧推
+            20 x 8 x 5
+            最后两组感觉很重
+            """
+        )
+        session.handleEditedText(
+            """
+            @卧推
+            22.5 x 6 x 3
+            最后两组感觉很重
+            """
+        )
+
+        XCTAssertTrue(persistedStates.isEmpty)
+
+        try? await Task.sleep(nanoseconds: 120_000_000)
+
+        XCTAssertEqual(persistedStates.count, 1)
+        XCTAssertEqual(
+            persistedStates[0].rawText,
+            """
+            @卧推
+            22.5 x 6 x 3
+            最后两组感觉很重
+            """
+        )
+        XCTAssertTrue(persistedStates[0].draftProgressState.isEmpty)
+    }
+
+    @MainActor
+    func testTrainingEditorSessionFinishWorkoutCancelsPendingEditPersistenceAndSavesFinalizedText() async {
+        let note = WorkoutNote(
+            rawText: """
+            @卧推
+            20 x 8 x 5
+            """
+        )
+        let session = TrainingEditorSession(
+            initialRawText: note.rawText,
+            saveDebounceNanoseconds: 200_000_000
+        )
+        var persistedStates: [TrainingEditorSession.PersistedState] = []
+
+        session.load(from: note, force: true) { _, state in
+            persistedStates.append(state)
+        }
+
+        session.incrementProgress(for: session.parsedText.planLines[0])
+        session.handleEditedText(
+            """
+            @卧推
+            20 x 8 x 5
+            最后一组明显变慢
+            """
+        )
+        session.finishWorkout()
+
+        try? await Task.sleep(nanoseconds: 300_000_000)
+
+        XCTAssertEqual(persistedStates.count, 2)
+        XCTAssertEqual(
+            persistedStates.last?.rawText,
+            """
+            @卧推
+            20 x 8 x 1
+            最后一组明显变慢
+            """
+        )
+        XCTAssertTrue(persistedStates.last?.draftProgressState.isEmpty ?? false)
+    }
+
+    @MainActor
+    func testTrainingEditorSessionRetainsMemoryStateAndLogsWhenPersistenceFails() {
+        let originalLogHandler = GymlogDiagnostics.logHandler
+        var logMessages: [String] = []
+        GymlogDiagnostics.logHandler = { logMessages.append($0) }
+        defer { GymlogDiagnostics.logHandler = originalLogHandler }
+
+        let note = WorkoutNote(
+            rawText: """
+            @卧推
+            20 x 8 x 5
+            """
+        )
+        let session = TrainingEditorSession(
+            initialRawText: note.rawText,
+            saveDebounceNanoseconds: 1
+        )
+
+        session.load(from: note, force: true) { _, _ in
+            throw NSError(
+                domain: "GymlogTests",
+                code: 1,
+                userInfo: [NSLocalizedDescriptionKey: "save failed"]
+            )
+        }
+
+        session.handleEditedText(
+            """
+            @卧推
+            22.5 x 6 x 3
+            """
+        )
+        session.flushPendingPersistence()
+
+        XCTAssertEqual(
+            session.noteText,
+            """
+            @卧推
+            22.5 x 6 x 3
+            """
+        )
+        XCTAssertEqual(session.parsedText.snapshot.rawText, session.noteText)
+        XCTAssertEqual(
+            session.lastPersistenceErrorMessage,
+            "Failed to persist workout draft: save failed"
+        )
+        XCTAssertTrue(
+            logMessages.contains(where: { $0.contains("Failed to persist workout draft") })
+        )
+    }
+
+    func testWorkoutNoteLogsAndRecoversWhenDraftProgressDataDecodingFails() {
+        let originalLogHandler = GymlogDiagnostics.logHandler
+        var logMessages: [String] = []
+        GymlogDiagnostics.logHandler = { logMessages.append($0) }
+        defer { GymlogDiagnostics.logHandler = originalLogHandler }
+
+        let note = WorkoutNote(
+            rawText: "@卧推\n20 x 8 x 5",
+            draftProgressData: Data("not-json".utf8)
+        )
+
+        XCTAssertTrue(note.draftProgressState.isEmpty)
+        XCTAssertTrue(
+            logMessages.contains(where: { $0.contains("Failed to decode workout draft progress") })
         )
     }
 }

@@ -26,20 +26,15 @@ final class WorkoutNote {
 
     var draftProgressState: WorkoutDraftProgressState {
         get {
-            guard let draftProgressData else {
-                return WorkoutDraftProgressState()
-            }
-
-            return (try? JSONDecoder().decode(
-                WorkoutDraftProgressState.self,
-                from: draftProgressData
-            )) ?? WorkoutDraftProgressState()
+            Self.decodedDraftProgressState(from: draftProgressData)
         }
         set {
-            draftProgressData = try? JSONEncoder().encode(newValue)
-
-            if newValue.isEmpty {
-                draftProgressData = nil
+            do {
+                draftProgressData = try Self.encodedDraftProgressData(from: newValue)
+            } catch {
+                GymlogDiagnostics.log(
+                    "Failed to encode workout draft progress for note \(id): \(error.localizedDescription)"
+                )
             }
         }
     }
@@ -60,5 +55,43 @@ final class WorkoutNote {
             rawText: rawText,
             reconcilingWith: previous
         )
+    }
+
+    func applyEditorState(
+        rawText: String,
+        draftProgressState: WorkoutDraftProgressState,
+        updatedAt: Date = .now
+    ) throws {
+        self.rawText = rawText
+        self.draftProgressData = try Self.encodedDraftProgressData(from: draftProgressState)
+        self.updatedAt = updatedAt
+    }
+
+    static func decodedDraftProgressState(from data: Data?) -> WorkoutDraftProgressState {
+        guard let data else {
+            return WorkoutDraftProgressState()
+        }
+
+        do {
+            return try JSONDecoder().decode(
+                WorkoutDraftProgressState.self,
+                from: data
+            )
+        } catch {
+            GymlogDiagnostics.log(
+                "Failed to decode workout draft progress: \(error.localizedDescription)"
+            )
+            return WorkoutDraftProgressState()
+        }
+    }
+
+    static func encodedDraftProgressData(
+        from state: WorkoutDraftProgressState
+    ) throws -> Data? {
+        guard !state.isEmpty else {
+            return nil
+        }
+
+        return try JSONEncoder().encode(state)
     }
 }

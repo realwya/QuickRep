@@ -3,18 +3,16 @@ import SwiftUI
 
 struct TrainingEditorScreen: View {
     @Environment(\.modelContext) private var modelContext
+    @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \WorkoutNote.updatedAt, order: .reverse) private var workoutNotes: [WorkoutNote]
 
-    @State private var noteText = Self.sampleText
-    @State private var parsedText = WorkoutTextParser.parse(rawText: Self.sampleText)
+    @State private var session = TrainingEditorSession(initialRawText: Self.sampleText)
     @State private var selectionContext = TrainingEditorTextLayout.selectionContext(
         text: Self.sampleText,
         selectedRange: NSRange(location: 0, length: 0)
     )
     @State private var trackedLineRects: [Int: CGRect] = [:]
     @State private var lastExitedLine: TrainingEditorLine?
-    @State private var draftProgressState = WorkoutDraftProgressState()
-    @State private var loadedWorkoutNoteID: UUID?
 
     private static let sampleText = """
     @卧推
@@ -47,8 +45,15 @@ struct TrainingEditorScreen: View {
         .onChange(of: workoutNotes.first?.id) { _, _ in
             syncFromPersistedWorkoutNoteIfNeeded(force: true)
         }
-        .onChange(of: noteText) { _, newValue in
-            reconcileEditedText(newValue)
+        .onChange(of: scenePhase) { _, newPhase in
+            guard newPhase != .active else {
+                return
+            }
+
+            session.flushPendingPersistence()
+        }
+        .onDisappear {
+            session.flushPendingPersistence()
         }
     }
 
@@ -70,13 +75,17 @@ struct TrainingEditorScreen: View {
     private var editorCard: some View {
         ZStack(alignment: .topLeading) {
             TrainingTextEditor(
-                text: $noteText,
-                trackedLineIndices: Set(parsedText.planLines.map(\.lineIndex)),
+                text: Binding(
+                    get: { session.noteText },
+                    set: { session.handleEditedText($0, editingLineIndex: selectionContext.currentLine.index) }
+                ),
+                trackedLineIndices: Set(session.parsedText.planLines.map(\.lineIndex)),
                 rightGutterWidth: 52,
                 onSelectionContextChange: { selectionContext = $0 },
                 onTrackedLineRectsChange: { trackedLineRects = $0 },
                 onLineExit: { line, _ in
                     lastExitedLine = line
+                    session.handleLineExit(from: line)
                 }
             )
 
@@ -93,7 +102,7 @@ struct TrainingEditorScreen: View {
 
     private var planLineProgressButtons: some View {
         ZStack(alignment: .topLeading) {
-            ForEach(parsedText.planLines) { planLine in
+            ForEach(session.parsedText.planLines) { planLine in
                 if let lineRect = trackedLineRects[planLine.lineIndex] {
                     progressButton(for: planLine)
                         .position(
@@ -132,15 +141,21 @@ struct TrainingEditorScreen: View {
             )
             statusRow(
                 title: "计划行按钮",
-                value: parsedText.planLines.isEmpty ? "无" : parsedText.planLines.map { "第 \($0.lineIndex + 1) 行" }.joined(separator: ", ")
+                value: session.parsedText.planLines.isEmpty ? "无" : session.parsedText.planLines.map { "第 \($0.lineIndex + 1) 行" }.joined(separator: ", ")
             )
             statusRow(
                 title: "进行中计划",
-                value: draftProgressState.entries
+                value: session.draftProgressState.entries
                     .map { entryDescription(for: $0) }
                     .joined(separator: ", ")
                     .nilIfEmpty ?? "无"
             )
+            if let lastPersistenceErrorMessage = session.lastPersistenceErrorMessage {
+                statusRow(
+                    title: "最近保存错误",
+                    value: lastPersistenceErrorMessage
+                )
+            }
         }
         .font(.footnote.monospaced())
         .padding(14)
@@ -183,7 +198,7 @@ struct TrainingEditorScreen: View {
     }
 
     private func entryDescription(for entry: WorkoutDraftProgressEntry) -> String {
-        guard let planLine = parsedText.planLines.first(where: { $0.lineIndex == entry.lineIndex }) else {
+        guard let planLine = session.parsedText.planLines.first(where: { $0.lineIndex == entry.lineIndex }) else {
             return "第 \(entry.lineIndex + 1) 行"
         }
 
@@ -192,14 +207,14 @@ struct TrainingEditorScreen: View {
 
     private func progressButton(for planLine: PlanLine) -> some View {
         let completedSets = min(
-            draftProgressState.completedSets(forLineIndex: planLine.lineIndex) ?? 0,
+            session.draftProgressState.completedSets(forLineIndex: planLine.lineIndex) ?? 0,
             planLine.targetSets
         )
         let progress = CGFloat(completedSets) / CGFloat(planLine.targetSets)
         let isComplete = completedSets >= planLine.targetSets
 
         return Button {
-            incrementProgress(for: planLine)
+            session.incrementProgress(for: planLine)
         } label: {
             ZStack {
                 Circle()
@@ -229,57 +244,8 @@ struct TrainingEditorScreen: View {
         .disabled(isComplete)
     }
 
-    private func incrementProgress(for planLine: PlanLine) {
-        guard let updatedDraftProgressState = WorkoutTextProgressUpdater.incrementProgress(
-            for: planLine.id,
-            in: parsedText,
-            draftProgress: draftProgressState
-        ) else {
-            return
-        }
-
-        draftProgressState = updatedDraftProgressState
-        persistCurrentWorkoutNote(
-            rawText: noteText,
-            draftProgressState: updatedDraftProgressState
-        )
-    }
-
     private func finishWorkout() {
-        let finalizedText = WorkoutTextProgressUpdater.finalizeWorkout(
-            in: parsedText,
-            draftProgress: draftProgressState
-        )
-
-        draftProgressState = WorkoutDraftProgressState()
-        parsedText = WorkoutTextParser.parse(
-            rawText: finalizedText,
-            reconcilingWith: parsedText.snapshot
-        )
-        noteText = finalizedText
-        persistCurrentWorkoutNote(
-            rawText: finalizedText,
-            draftProgressState: WorkoutDraftProgressState()
-        )
-    }
-
-    private func reconcileEditedText(_ rawText: String) {
-        let nextDraftProgressState = WorkoutTextProgressUpdater.reconcileDraftProgress(
-            afterEditing: rawText,
-            previousParseResult: parsedText,
-            previousDraftProgress: draftProgressState
-        )
-        let nextParseResult = WorkoutTextParser.parse(
-            rawText: rawText,
-            reconcilingWith: parsedText.snapshot
-        )
-
-        draftProgressState = nextDraftProgressState
-        parsedText = nextParseResult
-        persistCurrentWorkoutNote(
-            rawText: rawText,
-            draftProgressState: nextDraftProgressState
-        )
+        session.finishWorkout()
     }
 
     private func ensureWorkoutNoteExists() {
@@ -289,7 +255,13 @@ struct TrainingEditorScreen: View {
 
         let workoutNote = WorkoutNote(rawText: Self.sampleText)
         modelContext.insert(workoutNote)
-        try? modelContext.save()
+        do {
+            try modelContext.save()
+        } catch {
+            GymlogDiagnostics.log(
+                "Failed to save initial workout note: \(error.localizedDescription)"
+            )
+        }
     }
 
     private func syncFromPersistedWorkoutNoteIfNeeded(force: Bool = false) {
@@ -297,28 +269,17 @@ struct TrainingEditorScreen: View {
             return
         }
 
-        guard force || loadedWorkoutNoteID != workoutNote.id else {
-            return
-        }
-
-        loadedWorkoutNoteID = workoutNote.id
-        draftProgressState = workoutNote.draftProgressState
-        parsedText = workoutNote.parsedText()
-        noteText = workoutNote.rawText
-    }
-
-    private func persistCurrentWorkoutNote(
-        rawText: String,
-        draftProgressState: WorkoutDraftProgressState
-    ) {
-        guard let workoutNote = workoutNotes.first else {
-            return
-        }
-
-        workoutNote.rawText = rawText
-        workoutNote.draftProgressState = draftProgressState
-        workoutNote.updatedAt = .now
-        try? modelContext.save()
+        session.load(
+            from: workoutNote,
+            force: force,
+            saveAction: { workoutNote, state in
+                try workoutNote.applyEditorState(
+                    rawText: state.rawText,
+                    draftProgressState: state.draftProgressState
+                )
+                try modelContext.save()
+            }
+        )
     }
 }
 

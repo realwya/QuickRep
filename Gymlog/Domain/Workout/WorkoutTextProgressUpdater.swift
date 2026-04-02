@@ -31,6 +31,18 @@ enum WorkoutTextProgressUpdater {
             reconcilingWith: previousParseResult.snapshot
         )
         let nextParseResult = WorkoutTextParser.parse(snapshot: reconciledSnapshot)
+        return reconcileDraftProgress(
+            nextParseResult: nextParseResult,
+            previousParseResult: previousParseResult,
+            previousDraftProgress: previousDraftProgress
+        )
+    }
+
+    static func reconcileDraftProgress(
+        nextParseResult: WorkoutTextParseResult,
+        previousParseResult: WorkoutTextParseResult,
+        previousDraftProgress: WorkoutDraftProgressState
+    ) -> WorkoutDraftProgressState {
         let previousPlanLinesByLineIndex = Dictionary(
             uniqueKeysWithValues: previousParseResult.planLines.map { ($0.lineIndex, $0) }
         )

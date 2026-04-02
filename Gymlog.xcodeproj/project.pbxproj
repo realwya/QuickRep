@@ -22,6 +22,7 @@
 		A0000000000000000000001D /* TrainingEditorTextLayout.swift in Sources */ = {isa = PBXBuildFile; fileRef = A0000000000000000000000F /* TrainingEditorTextLayout.swift */; };
 		A0000000000000000000001E /* TrainingTextEditor.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000010 /* TrainingTextEditor.swift */; };
 		A0000000000000000000001F /* WorkoutTextProgressUpdater.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000020 /* WorkoutTextProgressUpdater.swift */; };
+		A00000000000000000000023 /* TrainingEditorSession.swift in Sources */ = {isa = PBXBuildFile; fileRef = A00000000000000000000024 /* TrainingEditorSession.swift */; };
 /* End PBXBuildFile section */
 
 /* Begin PBXContainerItemProxy section */
@@ -52,6 +53,7 @@
 		A0000000000000000000000F /* TrainingEditorTextLayout.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingEditorTextLayout.swift; sourceTree = "<group>"; };
 		A00000000000000000000010 /* TrainingTextEditor.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingTextEditor.swift; sourceTree = "<group>"; };
 		A00000000000000000000020 /* WorkoutTextProgressUpdater.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = WorkoutTextProgressUpdater.swift; sourceTree = "<group>"; };
+		A00000000000000000000024 /* TrainingEditorSession.swift */ = {isa = PBXFileReference; lastKnownFileType = sourcecode.swift; path = TrainingEditorSession.swift; sourceTree = "<group>"; };
 /* End PBXFileReference section */
 
 /* Begin PBXFrameworksBuildPhase section */
@@ -131,6 +133,7 @@
 			children = (
 				A0000000000000000000000F /* TrainingEditorTextLayout.swift */,
 				A00000000000000000000002 /* TrainingEditorScreen.swift */,
+				A00000000000000000000024 /* TrainingEditorSession.swift */,
 				A00000000000000000000010 /* TrainingTextEditor.swift */,
 			);
 			path = TrainingEditor;
@@ -281,6 +284,7 @@
 				A00000000000000000000019 /* PlanLine.swift in Sources */,
 				A0000000000000000000001D /* TrainingEditorTextLayout.swift in Sources */,
 				A00000000000000000000012 /* TrainingEditorScreen.swift in Sources */,
+				A00000000000000000000023 /* TrainingEditorSession.swift in Sources */,
 				A0000000000000000000001E /* TrainingTextEditor.swift in Sources */,
 				A0000000000000000000001B /* WorkoutTextParseResult.swift in Sources */,
 				A0000000000000000000001C /* WorkoutTextParser.swift in Sources */,
