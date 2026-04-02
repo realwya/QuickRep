@@ -68,6 +68,36 @@ final class GymlogTests: XCTestCase {
         XCTAssertTrue(entries.contains { $0.name == "卧推" })
     }
 
+    func testExerciseLibraryAutocompleteSuggestionsIncludeBuiltinAndCustomEntries() {
+        let entries = [
+            ExerciseLibraryEntry(name: "卧推", isBuiltin: true),
+            ExerciseLibraryEntry(name: "上斜卧推", isBuiltin: false),
+            ExerciseLibraryEntry(name: "深蹲", isBuiltin: true),
+        ]
+
+        let suggestions = ExerciseLibraryCatalog.autocompleteSuggestions(
+            matching: "卧",
+            from: entries
+        )
+
+        XCTAssertEqual(suggestions.map(\.name), ["卧推", "上斜卧推"])
+        XCTAssertEqual(suggestions.map(\.isBuiltin), [true, false])
+    }
+
+    func testExerciseLibraryAutocompleteSuggestionsHideExactMatches() {
+        let entries = [
+            ExerciseLibraryEntry(name: "卧推", isBuiltin: true),
+            ExerciseLibraryEntry(name: "窄握卧推", isBuiltin: false),
+        ]
+
+        let suggestions = ExerciseLibraryCatalog.autocompleteSuggestions(
+            matching: "卧推",
+            from: entries
+        )
+
+        XCTAssertTrue(suggestions.isEmpty)
+    }
+
     func testWorkoutNoteBuildsLineBasedTextSnapshotFromRawText() {
         let rawText = """
         @卧推
@@ -352,6 +382,80 @@ final class GymlogTests: XCTestCase {
         XCTAssertEqual(
             relocatedSelection.location - newLines[1].contentRange.location,
             4
+        )
+    }
+
+    func testTrainingEditorTextLayoutBuildsExerciseAutocompleteRequestFromCurrentLine() {
+        let text = """
+        备注
+          @卧
+        20 x 8 x 5
+        """
+        let lines = TrainingEditorTextLayout.lines(in: text)
+        let selectedRange = NSRange(
+            location: lines[1].contentRange.location + 4,
+            length: 0
+        )
+
+        let request = TrainingEditorTextLayout.exerciseAutocompleteRequest(
+            text: text,
+            selectedRange: selectedRange
+        )
+
+        XCTAssertEqual(request?.lineIndex, 1)
+        XCTAssertEqual(request?.query, "卧")
+        XCTAssertEqual(
+            request?.replacementRange,
+            NSRange(location: lines[1].contentRange.location + 2, length: 2)
+        )
+    }
+
+    func testTrainingEditorTextLayoutDoesNotBuildExerciseAutocompleteRequestForInvalidExerciseLine() {
+        let text = """
+        @@卧推
+        20 x 8 x 5
+        """
+        let selectedRange = NSRange(location: 3, length: 0)
+
+        let request = TrainingEditorTextLayout.exerciseAutocompleteRequest(
+            text: text,
+            selectedRange: selectedRange
+        )
+
+        XCTAssertNil(request)
+    }
+
+    func testTrainingEditorTextLayoutAppliesExerciseAutocompleteAndMovesCursorToLineEnd() {
+        let text = """
+          @卧
+        20 x 8 x 5
+        """
+        let lines = TrainingEditorTextLayout.lines(in: text)
+        let request = TrainingEditorTextLayout.exerciseAutocompleteRequest(
+            text: text,
+            selectedRange: NSRange(
+                location: lines[0].contentRange.location + 4,
+                length: 0
+            )
+        )
+        XCTAssertNotNil(request)
+
+        let insertion = TrainingEditorTextLayout.applyExerciseAutocomplete(
+            exerciseName: "卧推",
+            to: text,
+            request: request!
+        )
+
+        XCTAssertEqual(
+            insertion.text,
+            """
+              @卧推
+            20 x 8 x 5
+            """
+        )
+        XCTAssertEqual(
+            insertion.selectedRange,
+            NSRange(location: lines[0].contentRange.location + 5, length: 0)
         )
     }
 

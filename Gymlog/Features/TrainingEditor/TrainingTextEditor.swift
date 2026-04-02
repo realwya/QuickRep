@@ -1,11 +1,17 @@
 import SwiftUI
 import UIKit
 
+struct TrainingTextEditorSelectionRequest: Equatable {
+    let id: UUID
+    let selectedRange: NSRange
+}
+
 struct TrainingTextEditor: UIViewRepresentable {
     @Binding var text: String
 
     var trackedLineIndices: Set<Int> = []
     var rightGutterWidth: CGFloat = 52
+    var selectionRequest: TrainingTextEditorSelectionRequest?
     var onSelectionContextChange: (TrainingEditorSelectionContext) -> Void = { _ in }
     var onTrackedLineRectsChange: ([Int: CGRect]) -> Void = { _ in }
     var onLineExit: (TrainingEditorLine, TrainingEditorLine) -> Void = { _, _ in }
@@ -60,6 +66,17 @@ struct TrainingTextEditor: UIViewRepresentable {
             )
         }
 
+        if
+            let selectionRequest,
+            selectionRequest.id != context.coordinator.lastAppliedSelectionRequestID
+        {
+            uiView.selectedRange = context.coordinator.clampedSelectedRange(
+                selectionRequest.selectedRange,
+                in: uiView.text
+            )
+            context.coordinator.lastAppliedSelectionRequestID = selectionRequest.id
+        }
+
         context.coordinator.publishEditorState(from: uiView)
     }
 }
@@ -68,6 +85,7 @@ extension TrainingTextEditor {
     final class Coordinator: NSObject, UITextViewDelegate {
         var parent: TrainingTextEditor
         private var lastPublishedLine: TrainingEditorLine?
+        fileprivate var lastAppliedSelectionRequestID: UUID?
 
         init(parent: TrainingTextEditor) {
             self.parent = parent

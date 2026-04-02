@@ -2,8 +2,11 @@ import SwiftData
 import SwiftUI
 
 struct TrainingEditorScreen: View {
+    private static let autocompleteOverlayMaxHeight: CGFloat = 220
+
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
+    @Query(sort: \ExerciseLibraryEntry.name) private var exerciseLibraryEntries: [ExerciseLibraryEntry]
     @Query(sort: \WorkoutNote.updatedAt, order: .reverse) private var workoutNotes: [WorkoutNote]
 
     @State private var session = TrainingEditorSession(initialRawText: Self.sampleText)
@@ -13,6 +16,8 @@ struct TrainingEditorScreen: View {
     )
     @State private var trackedLineRects: [Int: CGRect] = [:]
     @State private var lastExitedLine: TrainingEditorLine?
+    @State private var autocompleteRequest: TrainingEditorExerciseAutocompleteRequest?
+    @State private var selectionRequest: TrainingTextEditorSelectionRequest?
 
     private static let sampleText = """
     @卧推
@@ -39,6 +44,7 @@ struct TrainingEditorScreen: View {
             .navigationBarHidden(true)
         }
         .onAppear {
+            ensureBuiltinExerciseLibraryEntries()
             ensureWorkoutNoteExists()
             syncFromPersistedWorkoutNoteIfNeeded(force: true)
         }
@@ -81,7 +87,14 @@ struct TrainingEditorScreen: View {
                 ),
                 trackedLineIndices: Set(session.parsedText.planLines.map(\.lineIndex)),
                 rightGutterWidth: 52,
-                onSelectionContextChange: { selectionContext = $0 },
+                selectionRequest: selectionRequest,
+                onSelectionContextChange: {
+                    selectionContext = $0
+                    autocompleteRequest = TrainingEditorTextLayout.exerciseAutocompleteRequest(
+                        text: session.noteText,
+                        selectedRange: $0.selectedRange
+                    )
+                },
                 onTrackedLineRectsChange: { trackedLineRects = $0 },
                 onLineExit: { line, _ in
                     lastExitedLine = line
@@ -90,6 +103,7 @@ struct TrainingEditorScreen: View {
             )
 
             planLineProgressButtons
+            autocompleteSuggestionsOverlay
         }
         .padding(12)
         .frame(maxWidth: .infinity, maxHeight: .infinity)
@@ -110,6 +124,54 @@ struct TrainingEditorScreen: View {
                             y: lineRect.midY
                         )
                 }
+            }
+        }
+    }
+
+    private var autocompleteSuggestionsOverlay: some View {
+        Group {
+            if
+                let lineRect = selectionContext.currentLineRect,
+                !autocompleteSuggestions.isEmpty
+            {
+                ScrollView {
+                    VStack(alignment: .leading, spacing: 6) {
+                        ForEach(autocompleteSuggestions) { suggestion in
+                            Button {
+                                applyAutocompleteSuggestion(suggestion)
+                            } label: {
+                                HStack(spacing: 8) {
+                                    Text("@\(suggestion.name)")
+                                        .font(.body.monospaced())
+                                        .foregroundStyle(.primary)
+                                        .frame(maxWidth: .infinity, alignment: .leading)
+
+                                    Text(suggestion.isBuiltin ? "内置" : "自定义")
+                                        .font(.caption.weight(.medium))
+                                        .foregroundStyle(.secondary)
+                                }
+                                .padding(.horizontal, 12)
+                                .padding(.vertical, 10)
+                                .contentShape(Rectangle())
+                            }
+                            .buttonStyle(.plain)
+                        }
+                    }
+                }
+                .frame(width: 240, alignment: .leading)
+                .frame(maxHeight: Self.autocompleteOverlayMaxHeight)
+                .padding(8)
+                .background(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .fill(Color(uiColor: .systemBackground))
+                )
+                .overlay(
+                    RoundedRectangle(cornerRadius: 14, style: .continuous)
+                        .strokeBorder(Color.secondary.opacity(0.15), lineWidth: 1)
+                )
+                .shadow(color: .black.opacity(0.08), radius: 14, y: 6)
+                .offset(x: lineRect.minX, y: lineRect.maxY + 8)
+                .zIndex(1)
             }
         }
     }
@@ -142,6 +204,10 @@ struct TrainingEditorScreen: View {
             statusRow(
                 title: "计划行按钮",
                 value: session.parsedText.planLines.isEmpty ? "无" : session.parsedText.planLines.map { "第 \($0.lineIndex + 1) 行" }.joined(separator: ", ")
+            )
+            statusRow(
+                title: "动作补全",
+                value: autocompleteStatusDescription
             )
             statusRow(
                 title: "进行中计划",
@@ -248,6 +314,31 @@ struct TrainingEditorScreen: View {
         session.finishWorkout()
     }
 
+    private var autocompleteSuggestions: [ExerciseAutocompleteSuggestion] {
+        guard let autocompleteRequest else {
+            return []
+        }
+
+        return ExerciseLibraryCatalog.autocompleteSuggestions(
+            matching: autocompleteRequest.query,
+            from: exerciseLibraryEntries
+        )
+    }
+
+    private var autocompleteStatusDescription: String {
+        guard let autocompleteRequest else {
+            return "无"
+        }
+
+        let queryDescription = autocompleteRequest.query.isEmpty ? "@" : "@\(autocompleteRequest.query)"
+        let suggestionsDescription = autocompleteSuggestions
+            .map { $0.name }
+            .joined(separator: ", ")
+            .nilIfEmpty ?? "无候选"
+
+        return "\(queryDescription) -> \(suggestionsDescription)"
+    }
+
     private func ensureWorkoutNoteExists() {
         guard workoutNotes.isEmpty else {
             return
@@ -262,6 +353,53 @@ struct TrainingEditorScreen: View {
                 "Failed to save initial workout note: \(error.localizedDescription)"
             )
         }
+    }
+
+    private func ensureBuiltinExerciseLibraryEntries() {
+        let existingNames = Set(
+            exerciseLibraryEntries.map { ExerciseLibraryCatalog.normalize($0.name) }
+        )
+        let missingBuiltinNames = ExerciseLibraryCatalog.builtinExerciseNames.filter {
+            existingNames.contains(ExerciseLibraryCatalog.normalize($0)) == false
+        }
+
+        guard missingBuiltinNames.isEmpty == false else {
+            return
+        }
+
+        missingBuiltinNames.forEach { name in
+            modelContext.insert(ExerciseLibraryEntry(name: name, isBuiltin: true))
+        }
+
+        do {
+            try modelContext.save()
+        } catch {
+            GymlogDiagnostics.log(
+                "Failed to seed builtin exercise library: \(error.localizedDescription)"
+            )
+        }
+    }
+
+    private func applyAutocompleteSuggestion(_ suggestion: ExerciseAutocompleteSuggestion) {
+        guard let autocompleteRequest else {
+            return
+        }
+
+        let insertion = TrainingEditorTextLayout.applyExerciseAutocomplete(
+            exerciseName: suggestion.name,
+            to: session.noteText,
+            request: autocompleteRequest
+        )
+
+        session.handleEditedText(
+            insertion.text,
+            editingLineIndex: autocompleteRequest.lineIndex
+        )
+        selectionRequest = TrainingTextEditorSelectionRequest(
+            id: UUID(),
+            selectedRange: insertion.selectedRange
+        )
+        self.autocompleteRequest = nil
     }
 
     private func syncFromPersistedWorkoutNoteIfNeeded(force: Bool = false) {

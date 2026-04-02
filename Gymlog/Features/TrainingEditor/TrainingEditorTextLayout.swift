@@ -16,6 +16,17 @@ struct TrainingEditorSelectionContext {
     let currentLineRect: CGRect?
 }
 
+struct TrainingEditorExerciseAutocompleteRequest: Equatable {
+    let lineIndex: Int
+    let query: String
+    let replacementRange: NSRange
+}
+
+struct TrainingEditorExerciseAutocompleteInsertion: Equatable {
+    let text: String
+    let selectedRange: NSRange
+}
+
 enum TrainingEditorTextLayout {
     private static var cachedText: String?
     private static var cachedLines: [TrainingEditorLine] = []
@@ -127,6 +138,78 @@ enum TrainingEditorTextLayout {
         in text: String
     ) -> Int {
         min(max(location, 0), (text as NSString).length)
+    }
+
+    static func exerciseAutocompleteRequest(
+        text: String,
+        selectedRange: NSRange
+    ) -> TrainingEditorExerciseAutocompleteRequest? {
+        guard selectedRange.length == 0 else {
+            return nil
+        }
+
+        let currentLine = line(
+            containingUTF16Location: selectedRange.location,
+            in: text
+        )
+        let caretLocation = clampUTF16Location(selectedRange.location, in: text)
+        let lineStart = currentLine.contentRange.location
+        let lineLength = currentLine.contentRange.length
+        let leadingWhitespaceLength = currentLine.text.prefix {
+            $0.isWhitespace && !$0.isNewline
+        }.utf16.count
+
+        guard lineLength > leadingWhitespaceLength else {
+            return nil
+        }
+
+        let tokenRange = NSRange(
+            location: lineStart + leadingWhitespaceLength,
+            length: lineLength - leadingWhitespaceLength
+        )
+        let tokenText = (text as NSString).substring(with: tokenRange)
+
+        guard
+            tokenText.hasPrefix("@"),
+            !tokenText.dropFirst().hasPrefix("@"),
+            caretLocation >= tokenRange.location + 1,
+            caretLocation <= NSMaxRange(tokenRange)
+        else {
+            return nil
+        }
+
+        let queryRange = NSRange(
+            location: tokenRange.location + 1,
+            length: caretLocation - tokenRange.location - 1
+        )
+        let query = (text as NSString).substring(with: queryRange)
+
+        return TrainingEditorExerciseAutocompleteRequest(
+            lineIndex: currentLine.index,
+            query: query,
+            replacementRange: tokenRange
+        )
+    }
+
+    static func applyExerciseAutocomplete(
+        exerciseName: String,
+        to text: String,
+        request: TrainingEditorExerciseAutocompleteRequest
+    ) -> TrainingEditorExerciseAutocompleteInsertion {
+        let replacementText = "@\(exerciseName)"
+        let nextText = (text as NSString).replacingCharacters(
+            in: request.replacementRange,
+            with: replacementText
+        )
+        let nextSelectedRange = NSRange(
+            location: request.replacementRange.location + replacementText.utf16.count,
+            length: 0
+        )
+
+        return TrainingEditorExerciseAutocompleteInsertion(
+            text: nextText,
+            selectedRange: nextSelectedRange
+        )
     }
 
     private static func linePosition(
