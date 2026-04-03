@@ -610,7 +610,7 @@ final class GymlogTests: XCTestCase {
     }
 
     @MainActor
-    func testTrainingEditorSessionRetainsPlanLineAndProgressDuringInvalidIntermediateEdit() {
+    func testTrainingEditorSessionClearsPlanLineAndProgressDuringInvalidEdit() {
         let session = TrainingEditorSession(
             initialRawText: """
             @卧推
@@ -623,8 +623,7 @@ final class GymlogTests: XCTestCase {
             """
             @卧推
             20 x 8 x
-            """,
-            editingLineIndex: 1
+            """
         )
 
         XCTAssertEqual(
@@ -634,12 +633,12 @@ final class GymlogTests: XCTestCase {
             20 x 8 x
             """
         )
-        XCTAssertEqual(session.parsedText.planLines.map(\.rawText), ["20 x 8 x 5"])
-        XCTAssertEqual(session.draftProgressState.completedSets(forLineIndex: 1), 1)
+        XCTAssertTrue(session.parsedText.planLines.isEmpty)
+        XCTAssertTrue(session.draftProgressState.isEmpty)
     }
 
     @MainActor
-    func testTrainingEditorSessionClearsProgressWhenInvalidPlanLineIsCommittedOnLineExit() {
+    func testTrainingEditorSessionClearsProgressWhenPlanLineBecomesInvalid() {
         let session = TrainingEditorSession(
             initialRawText: """
             @卧推
@@ -652,17 +651,15 @@ final class GymlogTests: XCTestCase {
             """
             @卧推
             20 x 8 x
-            """,
-            editingLineIndex: 1
+            """
         )
-        session.handleLineExit(from: TrainingEditorTextLayout.lines(in: session.noteText)[1])
 
         XCTAssertTrue(session.parsedText.planLines.isEmpty)
         XCTAssertTrue(session.draftProgressState.isEmpty)
     }
 
     @MainActor
-    func testTrainingEditorSessionClearsProgressWhenCommittedPlanLineDefinitionChanges() {
+    func testTrainingEditorSessionClearsProgressWhenPlanLineDefinitionChanges() {
         let session = TrainingEditorSession(
             initialRawText: """
             @卧推
@@ -675,16 +672,95 @@ final class GymlogTests: XCTestCase {
             """
             @卧推
             20 x 8 x 4
-            """,
-            editingLineIndex: 1
+            """
+        )
+
+        XCTAssertEqual(session.parsedText.planLines.map(\.rawText), ["20 x 8 x 4"])
+        XCTAssertTrue(session.draftProgressState.isEmpty)
+    }
+
+    @MainActor
+    func testTrainingEditorSessionMigratesProgressWhenLineIsInsertedAbovePlanLine() {
+        let session = TrainingEditorSession(
+            initialRawText: """
+            @卧推
+            20 x 8 x 5
+            最后两组感觉很重
+            """
+        )
+
+        session.incrementProgress(for: session.parsedText.planLines[0])
+        session.incrementProgress(for: session.parsedText.planLines[0])
+
+        session.handleEditedText(
+            """
+            @卧推
+            训练前热身完成
+            20 x 8 x 5
+            最后两组感觉很重
+            """
+        )
+
+        XCTAssertEqual(session.parsedText.planLines.map(\.lineIndex), [2])
+        XCTAssertEqual(session.parsedText.planLines.map(\.rawText), ["20 x 8 x 5"])
+        XCTAssertNil(session.draftProgressState.completedSets(forLineIndex: 1))
+        XCTAssertEqual(session.draftProgressState.completedSets(forLineIndex: 2), 2)
+    }
+
+    @MainActor
+    func testTrainingEditorSessionMigratesProgressWhenLineIsDeletedAbovePlanLine() {
+        let session = TrainingEditorSession(
+            initialRawText: """
+            @卧推
+            训练前热身完成
+            20 x 8 x 5
+            """
+        )
+
+        session.incrementProgress(for: session.parsedText.planLines[0])
+
+        session.handleEditedText(
+            """
+            @卧推
+            20 x 8 x 5
+            """
+        )
+
+        XCTAssertEqual(session.parsedText.planLines.map(\.lineIndex), [1])
+        XCTAssertEqual(session.parsedText.planLines.map(\.rawText), ["20 x 8 x 5"])
+        XCTAssertNil(session.draftProgressState.completedSets(forLineIndex: 2))
+        XCTAssertEqual(session.draftProgressState.completedSets(forLineIndex: 1), 1)
+    }
+
+    @MainActor
+    func testTrainingEditorSessionDoesNotRestoreProgressWhenPlanLineBecomesValidAgain() {
+        let session = TrainingEditorSession(
+            initialRawText: """
+            @卧推
+            20 x 8 x 5
+            """
+        )
+
+        session.incrementProgress(for: session.parsedText.planLines[0])
+
+        session.handleEditedText(
+            """
+            @卧推
+            20 x 8 x
+            """
+        )
+
+        XCTAssertTrue(session.parsedText.planLines.isEmpty)
+        XCTAssertTrue(session.draftProgressState.isEmpty)
+
+        session.handleEditedText(
+            """
+            @卧推
+            20 x 8 x 5
+            """
         )
 
         XCTAssertEqual(session.parsedText.planLines.map(\.rawText), ["20 x 8 x 5"])
-        XCTAssertEqual(session.draftProgressState.completedSets(forLineIndex: 1), 1)
-
-        session.handleLineExit(from: TrainingEditorTextLayout.lines(in: session.noteText)[1])
-
-        XCTAssertEqual(session.parsedText.planLines.map(\.rawText), ["20 x 8 x 4"])
         XCTAssertTrue(session.draftProgressState.isEmpty)
     }
 

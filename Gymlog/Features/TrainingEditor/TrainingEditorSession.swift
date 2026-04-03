@@ -39,7 +39,6 @@ final class TrainingEditorSession {
     @ObservationIgnored private var saveAction: SaveAction?
     @ObservationIgnored private var pendingPersistenceTask: Task<Void, Never>?
     @ObservationIgnored private var hasPendingPersistence = false
-    @ObservationIgnored private var pendingValidationLineIndex: Int?
     @ObservationIgnored private let saveDebounceNanoseconds: UInt64
 
     init(
@@ -80,46 +79,20 @@ final class TrainingEditorSession {
         noteText = workoutNote.rawText
         draftProgressState = workoutNote.draftProgressState
         parsedText = WorkoutTextParser.parse(rawText: workoutNote.rawText)
-        pendingValidationLineIndex = nil
         lastPersistenceErrorMessage = nil
     }
 
-    func handleEditedText(
-        _ rawText: String,
-        editingLineIndex: Int? = nil
-    ) {
+    func handleEditedText(_ rawText: String) {
         guard rawText != noteText else {
-            if let editingLineIndex {
-                pendingValidationLineIndex = editingLineIndex
-            }
             return
         }
 
         noteText = rawText
-
-        guard let editingLineIndex else {
-            applyCommittedParseState(for: rawText)
-            scheduleDebouncedPersistence()
-            return
-        }
-
-        pendingValidationLineIndex = editingLineIndex
-        hasPendingPersistence = true
-        cancelPendingPersistence()
-    }
-
-    func handleLineExit(from line: TrainingEditorLine) {
-        guard pendingValidationLineIndex == line.index else {
-            return
-        }
-
-        commitPendingLineValidationIfNeeded()
+        applyCommittedParseState(for: rawText)
         scheduleDebouncedPersistence()
     }
 
     func incrementProgress(for planLine: PlanLine) {
-        commitPendingLineValidationIfNeeded()
-
         guard let updatedDraftProgressState = WorkoutTextProgressUpdater.incrementProgress(
             for: planLine.id,
             in: parsedText,
@@ -134,7 +107,6 @@ final class TrainingEditorSession {
 
     func finishWorkout() {
         cancelPendingPersistence()
-        commitPendingLineValidationIfNeeded()
 
         let finalizedText = WorkoutTextProgressUpdater.finalizeWorkout(
             in: parsedText,
@@ -153,7 +125,6 @@ final class TrainingEditorSession {
 
     func flushPendingPersistence() {
         cancelPendingPersistence()
-        commitPendingLineValidationIfNeeded()
         persistIfNeeded()
     }
 
@@ -189,15 +160,6 @@ final class TrainingEditorSession {
     private func cancelPendingPersistence() {
         pendingPersistenceTask?.cancel()
         pendingPersistenceTask = nil
-    }
-
-    private func commitPendingLineValidationIfNeeded() {
-        guard pendingValidationLineIndex != nil else {
-            return
-        }
-
-        applyCommittedParseState(for: noteText)
-        pendingValidationLineIndex = nil
     }
 
     private func applyCommittedParseState(for rawText: String) {

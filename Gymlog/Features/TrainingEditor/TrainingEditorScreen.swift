@@ -80,7 +80,7 @@ struct TrainingEditorScreen: View {
             TrainingTextEditor(
                 text: Binding(
                     get: { session.noteText },
-                    set: { session.handleEditedText($0, editingLineIndex: selectionContext.currentLine.index) }
+                    set: { session.handleEditedText($0) }
                 ),
                 trackedLineIndices: Set(session.parsedText.planLines.map(\.lineIndex)),
                 rightGutterWidth: 52,
@@ -92,10 +92,7 @@ struct TrainingEditorScreen: View {
                         selectedRange: $0.selectedRange
                     )
                 },
-                onTrackedLineRectsChange: { trackedLineRects = $0 },
-                onLineExit: { line, _ in
-                    session.handleLineExit(from: line)
-                }
+                onTrackedLineRectsChange: { trackedLineRects = $0 }
             )
 
             planLineProgressButtons
@@ -279,8 +276,7 @@ struct TrainingEditorScreen: View {
         )
 
         session.handleEditedText(
-            insertion.text,
-            editingLineIndex: autocompleteRequest.lineIndex
+            insertion.text
         )
         selectionRequest = TrainingTextEditorSelectionRequest(
             id: UUID(),

@@ -16,7 +16,6 @@ struct TrainingTextEditor: UIViewRepresentable {
     var selectionRequest: TrainingTextEditorSelectionRequest?
     var onSelectionContextChange: (TrainingEditorSelectionContext) -> Void = { _ in }
     var onTrackedLineRectsChange: ([Int: CGRect]) -> Void = { _ in }
-    var onLineExit: (TrainingEditorLine, TrainingEditorLine) -> Void = { _, _ in }
 
     func makeCoordinator() -> Coordinator {
         Coordinator(parent: self)
@@ -98,7 +97,6 @@ extension TrainingTextEditor {
         ]
 
         var parent: TrainingTextEditor
-        private var lastPublishedLine: TrainingEditorLine?
         fileprivate var lastAppliedSelectionRequestID: UUID?
 
         init(parent: TrainingTextEditor) {
@@ -143,12 +141,6 @@ extension TrainingTextEditor {
                 containingUTF16Location: selectedRange.location,
                 in: textView.text
             )
-
-            if let previousLine = lastPublishedLine, previousLine.index != currentLine.index {
-                parent.onLineExit(previousLine, currentLine)
-            }
-
-            lastPublishedLine = currentLine
 
             parent.onSelectionContextChange(
                 TrainingEditorSelectionContext(
