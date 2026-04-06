@@ -191,7 +191,7 @@ struct TrainingEditorScreen: View {
                     .trim(from: 0, to: progress)
                     .stroke(
                         isComplete ? Color.green : Color.accentColor,
-                        style: StrokeStyle(lineWidth: 4, lineCap: .round)
+                        style: StrokeStyle(lineWidth: 2, lineCap: .round)
                     )
                     .rotationEffect(.degrees(-90))
 
@@ -199,7 +199,7 @@ struct TrainingEditorScreen: View {
                     .font(.caption2.monospacedDigit().weight(.semibold))
                     .foregroundStyle(isComplete ? Color.green : Color.primary)
             }
-            .frame(width: 32, height: 32)
+            .frame(width: 22, height: 22)
             .shadow(color: .black.opacity(0.08), radius: 6, y: 2)
         }
         .buttonStyle(.plain)

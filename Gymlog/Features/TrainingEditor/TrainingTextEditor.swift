@@ -7,7 +7,16 @@ struct TrainingTextEditorSelectionRequest: Equatable {
 }
 
 struct TrainingTextEditor: UIViewRepresentable {
-    private static let editorFont = UIFont.monospacedSystemFont(ofSize: 17, weight: .regular)
+    private static let editorLineHeight: CGFloat = 24
+    private static let editorFont = UIFont.monospacedSystemFont(ofSize: 16, weight: .regular)
+    private static let editorBaselineOffset: CGFloat = 0
+    private static let editorParagraphStyle: NSParagraphStyle = {
+        let style = NSMutableParagraphStyle()
+        style.minimumLineHeight = editorLineHeight
+        style.maximumLineHeight = editorLineHeight
+        style.lineSpacing = 4
+        return style
+    }()
 
     @Binding var text: String
 
@@ -90,10 +99,14 @@ extension TrainingTextEditor {
         private static let baseTextAttributes: [NSAttributedString.Key: Any] = [
             .font: TrainingTextEditor.editorFont,
             .foregroundColor: UIColor.label,
+            .baselineOffset: TrainingTextEditor.editorBaselineOffset,
+            .paragraphStyle: TrainingTextEditor.editorParagraphStyle,
         ]
         private static let exerciseLineTextAttributes: [NSAttributedString.Key: Any] = [
             .font: TrainingTextEditor.editorFont,
             .foregroundColor: UIColor.systemBlue,
+            .baselineOffset: TrainingTextEditor.editorBaselineOffset,
+            .paragraphStyle: TrainingTextEditor.editorParagraphStyle,
         ]
 
         var parent: TrainingTextEditor
