@@ -95,3 +95,62 @@ final class WorkoutNote {
         return try JSONEncoder().encode(state)
     }
 }
+
+@Model
+final class WorkoutHistoryRecord {
+    @Attribute(.unique) var id: UUID
+    var rawText: String
+    var finishedAt: Date
+
+    init(
+        id: UUID = UUID(),
+        rawText: String,
+        finishedAt: Date = .now
+    ) {
+        self.id = id
+        self.rawText = rawText
+        self.finishedAt = finishedAt
+    }
+}
+
+enum TrainingHistoryStore {
+    @MainActor
+    static func recordFinishedWorkout(
+        finalizedRawText: String,
+        draftWorkoutNote: WorkoutNote?,
+        modelContext: ModelContext,
+        finishedAt: Date = .now
+    ) throws {
+        if finalizedRawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false {
+            modelContext.insert(
+                WorkoutHistoryRecord(
+                    rawText: finalizedRawText,
+                    finishedAt: finishedAt
+                )
+            )
+        }
+
+        let draftNote = draftWorkoutNote
+            ?? latestWorkoutNote(in: modelContext)
+            ?? {
+                let note = WorkoutNote(rawText: "")
+                modelContext.insert(note)
+                return note
+            }()
+
+        try draftNote.applyEditorState(
+            rawText: "",
+            draftProgressState: WorkoutDraftProgressState(),
+            updatedAt: finishedAt
+        )
+        try modelContext.save()
+    }
+
+    @MainActor
+    private static func latestWorkoutNote(in modelContext: ModelContext) -> WorkoutNote? {
+        let descriptor = FetchDescriptor<WorkoutNote>(
+            sortBy: [SortDescriptor(\.updatedAt, order: .reverse)]
+        )
+        return try? modelContext.fetch(descriptor).first
+    }
+}

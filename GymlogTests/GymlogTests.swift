@@ -1,4 +1,5 @@
 import Foundation
+import SwiftData
 import XCTest
 @testable import Gymlog
 
@@ -988,5 +989,102 @@ final class GymlogTests: XCTestCase {
         XCTAssertTrue(
             logMessages.contains(where: { $0.contains("Failed to decode workout draft progress") })
         )
+    }
+
+    @MainActor
+    func testTrainingHistoryStoreRecordsNonEmptyFinishedWorkoutAndClearsDraft() throws {
+        let container = try ModelContainer(
+            for: WorkoutNote.self,
+            WorkoutHistoryRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let modelContext = container.mainContext
+        let finishedAt = Date(timeIntervalSince1970: 1_000)
+        let draftNote = WorkoutNote(rawText: "@卧推\n20 x 8 x 5")
+        draftNote.draftProgressState = WorkoutDraftProgressState(
+            entries: [WorkoutDraftProgressEntry(lineIndex: 1, completedSets: 2)]
+        )
+        modelContext.insert(draftNote)
+        try modelContext.save()
+
+        try TrainingHistoryStore.recordFinishedWorkout(
+            finalizedRawText: "@卧推\n20 x 8 x 4",
+            draftWorkoutNote: draftNote,
+            modelContext: modelContext,
+            finishedAt: finishedAt
+        )
+
+        let historyRecords = try modelContext.fetch(
+            FetchDescriptor<WorkoutHistoryRecord>(
+                sortBy: [SortDescriptor(\.finishedAt, order: .reverse)]
+            )
+        )
+        XCTAssertEqual(historyRecords.count, 1)
+        XCTAssertEqual(historyRecords[0].rawText, "@卧推\n20 x 8 x 4")
+        XCTAssertEqual(historyRecords[0].finishedAt, finishedAt)
+
+        let persistedNotes = try modelContext.fetch(FetchDescriptor<WorkoutNote>())
+        XCTAssertEqual(persistedNotes.count, 1)
+        XCTAssertEqual(persistedNotes[0].rawText, "")
+        XCTAssertTrue(persistedNotes[0].draftProgressState.isEmpty)
+    }
+
+    @MainActor
+    func testTrainingHistoryStoreSkipsEmptyFinishedWorkoutButClearsDraft() throws {
+        let container = try ModelContainer(
+            for: WorkoutNote.self,
+            WorkoutHistoryRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let modelContext = container.mainContext
+        let draftNote = WorkoutNote(rawText: "@卧推\n20 x 8 x 5")
+        draftNote.draftProgressState = WorkoutDraftProgressState(
+            entries: [WorkoutDraftProgressEntry(lineIndex: 1, completedSets: 1)]
+        )
+        modelContext.insert(draftNote)
+        try modelContext.save()
+
+        try TrainingHistoryStore.recordFinishedWorkout(
+            finalizedRawText: "  \n ",
+            draftWorkoutNote: draftNote,
+            modelContext: modelContext
+        )
+
+        let historyRecords = try modelContext.fetch(FetchDescriptor<WorkoutHistoryRecord>())
+        XCTAssertTrue(historyRecords.isEmpty)
+
+        let persistedNotes = try modelContext.fetch(FetchDescriptor<WorkoutNote>())
+        XCTAssertEqual(persistedNotes.count, 1)
+        XCTAssertEqual(persistedNotes[0].rawText, "")
+        XCTAssertTrue(persistedNotes[0].draftProgressState.isEmpty)
+    }
+
+    @MainActor
+    func testWorkoutHistoryRecordFetchSortsByFinishedAtDescending() throws {
+        let container = try ModelContainer(
+            for: WorkoutHistoryRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let modelContext = container.mainContext
+        modelContext.insert(
+            WorkoutHistoryRecord(
+                rawText: "older",
+                finishedAt: Date(timeIntervalSince1970: 1_000)
+            )
+        )
+        modelContext.insert(
+            WorkoutHistoryRecord(
+                rawText: "newer",
+                finishedAt: Date(timeIntervalSince1970: 2_000)
+            )
+        )
+        try modelContext.save()
+
+        let sortedRecords = try modelContext.fetch(
+            FetchDescriptor<WorkoutHistoryRecord>(
+                sortBy: [SortDescriptor(\.finishedAt, order: .reverse)]
+            )
+        )
+        XCTAssertEqual(sortedRecords.map(\.rawText), ["newer", "older"])
     }
 }

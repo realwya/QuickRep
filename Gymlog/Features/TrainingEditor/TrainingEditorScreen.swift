@@ -3,26 +3,40 @@ import SwiftUI
 
 struct TrainingEditorScreen: View {
     private static let autocompleteOverlayMaxHeight: CGFloat = 220
+    private static let defaultInitialRawText = """
+    @卧推
+    20 x 8 x 5
+    最后两组感觉很重
+    """
 
     @Environment(\.modelContext) private var modelContext
     @Environment(\.scenePhase) private var scenePhase
     @Query(sort: \ExerciseLibraryEntry.name) private var exerciseLibraryEntries: [ExerciseLibraryEntry]
     @Query(sort: \WorkoutNote.updatedAt, order: .reverse) private var workoutNotes: [WorkoutNote]
 
-    @State private var session = TrainingEditorSession(initialRawText: Self.sampleText)
-    @State private var selectionContext = TrainingEditorTextLayout.selectionContext(
-        text: Self.sampleText,
-        selectedRange: NSRange(location: 0, length: 0)
-    )
+    @State private var session: TrainingEditorSession
+    @State private var selectionContext: TrainingEditorSelectionContext
     @State private var trackedLineRects: [Int: CGRect] = [:]
     @State private var autocompleteRequest: TrainingEditorExerciseAutocompleteRequest?
     @State private var selectionRequest: TrainingTextEditorSelectionRequest?
 
-    private static let sampleText = """
-    @卧推
-    20 x 8 x 5
-    最后两组感觉很重
-    """
+    private let initialRawText: String
+    private let onFinishWorkout: ((String) -> Void)?
+
+    init(
+        initialRawText: String = Self.defaultInitialRawText,
+        onFinishWorkout: ((String) -> Void)? = nil
+    ) {
+        self.initialRawText = initialRawText
+        self.onFinishWorkout = onFinishWorkout
+        _session = State(initialValue: TrainingEditorSession(initialRawText: initialRawText))
+        _selectionContext = State(
+            initialValue: TrainingEditorTextLayout.selectionContext(
+                text: initialRawText,
+                selectedRange: NSRange(location: 0, length: 0)
+            )
+        )
+    }
 
     var body: some View {
         NavigationStack {
@@ -210,6 +224,7 @@ struct TrainingEditorScreen: View {
 
     private func finishWorkout() {
         session.finishWorkout()
+        onFinishWorkout?(session.noteText)
     }
 
     private var autocompleteSuggestions: [ExerciseAutocompleteSuggestion] {
@@ -228,7 +243,7 @@ struct TrainingEditorScreen: View {
             return
         }
 
-        let workoutNote = WorkoutNote(rawText: Self.sampleText)
+        let workoutNote = WorkoutNote(rawText: initialRawText)
         modelContext.insert(workoutNote)
         do {
             try modelContext.save()

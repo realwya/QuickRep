@@ -20,6 +20,7 @@ struct TrainingTextEditor: UIViewRepresentable {
 
     @Binding var text: String
 
+    var isEditable: Bool = true
     var trackedLineIndices: Set<Int> = []
     var rightGutterWidth: CGFloat = 52
     var selectionRequest: TrainingTextEditorSelectionRequest?
@@ -38,6 +39,7 @@ struct TrainingTextEditor: UIViewRepresentable {
         textView.font = Self.editorFont
         textView.textColor = .label
         textView.tintColor = .systemBlue
+        textView.isEditable = isEditable
         textView.alwaysBounceVertical = true
         textView.keyboardDismissMode = .interactive
         textView.autocapitalizationType = .sentences
@@ -61,6 +63,10 @@ struct TrainingTextEditor: UIViewRepresentable {
         let expectedInsets = UIEdgeInsets(top: 16, left: 0, bottom: 16, right: rightGutterWidth)
         if uiView.textContainerInset != expectedInsets {
             uiView.textContainerInset = expectedInsets
+        }
+
+        if uiView.isEditable != isEditable {
+            uiView.isEditable = isEditable
         }
 
         if uiView.text != text {
