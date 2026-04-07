@@ -248,7 +248,7 @@ struct TrainingEditorScreen: View {
         do {
             try modelContext.save()
         } catch {
-            GymlogDiagnostics.log(
+            QuickRepDiagnostics.log(
                 "Failed to save initial workout note: \(error.localizedDescription)"
             )
         }
@@ -273,7 +273,7 @@ struct TrainingEditorScreen: View {
         do {
             try modelContext.save()
         } catch {
-            GymlogDiagnostics.log(
+            QuickRepDiagnostics.log(
                 "Failed to seed builtin exercise library: \(error.localizedDescription)"
             )
         }

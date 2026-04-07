@@ -1,9 +1,9 @@
 import Foundation
 import SwiftData
 import XCTest
-@testable import Gymlog
+@testable import QuickRep
 
-final class GymlogTests: XCTestCase {
+final class QuickRepTests: XCTestCase {
     func testWorkoutNotePersistsRawTextAndDraftProgressSeparately() {
         let updatedAt = Date(timeIntervalSince1970: 123)
         let note = WorkoutNote(
@@ -925,10 +925,10 @@ final class GymlogTests: XCTestCase {
 
     @MainActor
     func testTrainingEditorSessionRetainsMemoryStateAndLogsWhenPersistenceFails() {
-        let originalLogHandler = GymlogDiagnostics.logHandler
+        let originalLogHandler = QuickRepDiagnostics.logHandler
         var logMessages: [String] = []
-        GymlogDiagnostics.logHandler = { logMessages.append($0) }
-        defer { GymlogDiagnostics.logHandler = originalLogHandler }
+        QuickRepDiagnostics.logHandler = { logMessages.append($0) }
+        defer { QuickRepDiagnostics.logHandler = originalLogHandler }
 
         let note = WorkoutNote(
             rawText: """
@@ -943,7 +943,7 @@ final class GymlogTests: XCTestCase {
 
         session.load(from: note, force: true) { _, _ in
             throw NSError(
-                domain: "GymlogTests",
+                domain: "QuickRepTests",
                 code: 1,
                 userInfo: [NSLocalizedDescriptionKey: "save failed"]
             )
@@ -975,10 +975,10 @@ final class GymlogTests: XCTestCase {
     }
 
     func testWorkoutNoteLogsAndRecoversWhenDraftProgressDataDecodingFails() {
-        let originalLogHandler = GymlogDiagnostics.logHandler
+        let originalLogHandler = QuickRepDiagnostics.logHandler
         var logMessages: [String] = []
-        GymlogDiagnostics.logHandler = { logMessages.append($0) }
-        defer { GymlogDiagnostics.logHandler = originalLogHandler }
+        QuickRepDiagnostics.logHandler = { logMessages.append($0) }
+        defer { QuickRepDiagnostics.logHandler = originalLogHandler }
 
         let note = WorkoutNote(
             rawText: "@卧推\n20 x 8 x 5",

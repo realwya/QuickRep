@@ -2,7 +2,7 @@ import SwiftUI
 import SwiftData
 
 @main
-struct GymlogApp: App {
+struct QuickRepApp: App {
     var body: some Scene {
         WindowGroup {
             TrainingHomeScreen()
@@ -76,7 +76,7 @@ struct TrainingHomeScreen: View {
             )
             isPresentingEditor = false
         } catch {
-            GymlogDiagnostics.log(
+            QuickRepDiagnostics.log(
                 "Failed to finalize workout from home screen: \(error.localizedDescription)"
             )
         }

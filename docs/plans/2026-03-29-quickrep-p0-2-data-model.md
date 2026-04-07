@@ -1,4 +1,4 @@
-# Gymlog P0-2 核心数据模型定义方案
+# QuickRep P0-2 核心数据模型定义方案
 
 ## 摘要
 本轮只定义数据模型规格，不实现解析器、编辑器或持久化接线。模型保持“双层模型”，但训练中的完成进度改为独立草稿状态：
@@ -11,9 +11,9 @@
 
 建议把这一轮的代码落在 3 个区域：
 
-- `Gymlog/Domain/Workout`
-- `Gymlog/Domain/ExerciseLibrary`
-- `Gymlog/Persistence` 或同级模型目录
+- `QuickRep/Domain/Workout`
+- `QuickRep/Domain/ExerciseLibrary`
+- `QuickRep/Persistence` 或同级模型目录
 
 ## 关键定义
 

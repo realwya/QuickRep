@@ -1,4 +1,4 @@
-# Gymlog P0-3 Training Note Text Source Model Implementation Plan
+# QuickRep P0-3 Training Note Text Source Model Implementation Plan
 
 > **For Claude:** REQUIRED SUB-SKILL: Use superpowers:executing-plans to implement this plan task-by-task.
 
@@ -13,8 +13,8 @@
 ### Task 1: Document the P0-3 runtime model
 
 **Files:**
-- Create: `docs/plans/2026-03-31-gymlog-p0-3-training-note-text-source-model.md`
-- Modify: `docs/plans/2026-03-26-gymlog-training-text-entry-backlog.md`
+- Create: `docs/plans/2026-03-31-quickrep-p0-3-training-note-text-source-model.md`
+- Modify: `docs/plans/2026-03-26-quickrep-training-text-entry-backlog.md`
 
 **Step 1: Write down the approved runtime model**
 
@@ -29,7 +29,7 @@
 ### Task 2: Add failing tests for the text source model
 
 **Files:**
-- Modify: `GymlogTests/GymlogTests.swift`
+- Modify: `QuickRepTests/QuickRepTests.swift`
 
 **Step 1: Write the failing tests**
 
@@ -41,15 +41,15 @@ func testWorkoutNoteReconcilesSnapshotAfterLineDeletion()
 
 **Step 2: Run test to verify it fails**
 
-Run: `/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project Gymlog.xcodeproj -scheme Gymlog -destination 'platform=iOS Simulator,name=iPhone 16'`
+Run: `/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project QuickRep.xcodeproj -scheme QuickRep -destination 'platform=iOS Simulator,name=iPhone 16'`
 Expected: FAIL because the snapshot types and helpers do not exist yet.
 
 ### Task 3: Implement the runtime text source model
 
 **Files:**
-- Create: `Gymlog/Domain/Workout/WorkoutTextSnapshot.swift`
-- Modify: `Gymlog/Persistence/WorkoutNote.swift`
-- Modify: `Gymlog.xcodeproj/project.pbxproj`
+- Create: `QuickRep/Domain/Workout/WorkoutTextSnapshot.swift`
+- Modify: `QuickRep/Persistence/WorkoutNote.swift`
+- Modify: `QuickRep.xcodeproj/project.pbxproj`
 
 **Step 1: Add the snapshot types**
 
@@ -91,13 +91,13 @@ func textSnapshot(reconcilingWith previous: WorkoutTextSnapshot? = nil) -> Worko
 
 **Step 4: Run the focused tests**
 
-Run: `/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project Gymlog.xcodeproj -scheme Gymlog -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:GymlogTests/GymlogTests`
+Run: `/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project QuickRep.xcodeproj -scheme QuickRep -destination 'platform=iOS Simulator,name=iPhone 16' -only-testing:QuickRepTests/QuickRepTests`
 Expected: PASS for the new P0-3 tests.
 
 ### Task 4: Verify scope and update docs
 
 **Files:**
-- Modify: `docs/plans/2026-03-26-gymlog-training-text-entry-backlog.md`
+- Modify: `docs/plans/2026-03-26-quickrep-training-text-entry-backlog.md`
 
 **Step 1: Re-check the P0-3 scope**
 
@@ -106,5 +106,5 @@ Expected: PASS for the new P0-3 tests.
 
 **Step 2: Run the full verification command**
 
-Run: `/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project Gymlog.xcodeproj -scheme Gymlog -destination 'platform=iOS Simulator,name=iPhone 16'`
+Run: `/Applications/Xcode.app/Contents/Developer/usr/bin/xcodebuild test -project QuickRep.xcodeproj -scheme QuickRep -destination 'platform=iOS Simulator,name=iPhone 16'`
 Expected: PASS with zero test failures.

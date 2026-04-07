@@ -1,7 +1,7 @@
 import Foundation
 import Observation
 
-enum GymlogDiagnostics {
+enum QuickRepDiagnostics {
     static var logHandler: (String) -> Void = { message in
 #if DEBUG
         print(message)
@@ -268,7 +268,7 @@ final class TrainingEditorSession {
         } catch {
             let message = "Failed to persist workout draft: \(error.localizedDescription)"
             lastPersistenceErrorMessage = message
-            GymlogDiagnostics.log(message)
+            QuickRepDiagnostics.log(message)
         }
     }
 

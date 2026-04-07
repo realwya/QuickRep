@@ -32,7 +32,7 @@ final class WorkoutNote {
             do {
                 draftProgressData = try Self.encodedDraftProgressData(from: newValue)
             } catch {
-                GymlogDiagnostics.log(
+                QuickRepDiagnostics.log(
                     "Failed to encode workout draft progress for note \(id): \(error.localizedDescription)"
                 )
             }
@@ -78,7 +78,7 @@ final class WorkoutNote {
                 from: data
             )
         } catch {
-            GymlogDiagnostics.log(
+            QuickRepDiagnostics.log(
                 "Failed to decode workout draft progress: \(error.localizedDescription)"
             )
             return WorkoutDraftProgressState()
