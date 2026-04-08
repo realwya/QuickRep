@@ -23,21 +23,12 @@ struct TrainingHomeScreen: View {
     private var workoutNotes: [WorkoutNote]
 
     @State private var isPresentingEditor = false
+    @State private var selectedHistoryRecord: WorkoutHistoryRecord?
 
     var body: some View {
         NavigationStack {
             List {
                 Section {
-                    Button {
-                        isPresentingEditor = true
-                    } label: {
-                        Label("开始训练", systemImage: "play.fill")
-                            .font(.headline)
-                            .frame(maxWidth: .infinity, alignment: .leading)
-                    }
-                }
-
-                Section("训练历史记录") {
                     if historyRecords.isEmpty {
                         Text("还没有训练记录，点击“开始训练”创建第一条。")
                             .font(.subheadline)
@@ -45,12 +36,14 @@ struct TrainingHomeScreen: View {
                             .padding(.vertical, 8)
                     } else {
                         ForEach(historyRecords) { record in
-                            NavigationLink {
-                                TrainingHistoryDetailScreen(record: record)
+                            Button {
+                                selectedHistoryRecord = record
                             } label: {
                                 WorkoutHistoryRow(record: record)
                             }
-                            .listRowInsets(EdgeInsets(top: 6, leading: 16, bottom: 6, trailing: 16))
+                            .buttonStyle(.plain)
+                            .contentShape(Rectangle())
+                            .listRowInsets(EdgeInsets(top: 6, leading: 0, bottom: 6, trailing: 0))
                             .listRowBackground(Color.clear)
                             .listRowSeparator(.hidden)
                         }
@@ -58,6 +51,41 @@ struct TrainingHomeScreen: View {
                 }
             }
             .navigationTitle("训练")
+            .navigationDestination(isPresented: isPresentingHistoryDetail) {
+                if let selectedHistoryRecord {
+                    TrainingHistoryDetailScreen(record: selectedHistoryRecord)
+                }
+            }
+            .safeAreaInset(edge: .bottom) {
+                VStack {
+                    Button {
+                        isPresentingEditor = true
+                    } label: {
+                        Label("开始训练", systemImage: "play.fill")
+                            .font(.headline)
+                            .padding(.horizontal, 28)
+                    }
+                    .buttonStyle(.borderedProminent)
+                    .controlSize(.large)
+                    .frame(maxWidth: 280)
+                }
+                .frame(maxWidth: .infinity)
+                .padding(.horizontal, 16)
+                .padding(.top, 10)
+                .padding(.bottom, 12)
+                .background {
+                    LinearGradient(
+                        colors: [
+                            Color(uiColor: .systemBackground).opacity(0),
+                            Color(uiColor: .systemBackground).opacity(0.72),
+                            Color(uiColor: .systemBackground).opacity(0.94),
+                        ],
+                        startPoint: .top,
+                        endPoint: .bottom
+                    )
+                    .ignoresSafeArea(edges: .bottom)
+                }
+            }
         }
         .sheet(isPresented: $isPresentingEditor) {
             TrainingEditorScreen(
@@ -80,6 +108,17 @@ struct TrainingHomeScreen: View {
                 "Failed to finalize workout from home screen: \(error.localizedDescription)"
             )
         }
+    }
+
+    private var isPresentingHistoryDetail: Binding<Bool> {
+        Binding(
+            get: { selectedHistoryRecord != nil },
+            set: { isPresented in
+                if !isPresented {
+                    selectedHistoryRecord = nil
+                }
+            }
+        )
     }
 }
 
