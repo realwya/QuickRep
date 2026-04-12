@@ -61,7 +61,7 @@ struct TrainingHomeScreen: View {
                     Button {
                         isPresentingEditor = true
                     } label: {
-                        Label("开始训练", systemImage: "play.fill")
+                        Label(primaryWorkoutButtonTitle, systemImage: "play.fill")
                             .font(.headline)
                             .padding(.horizontal, 28)
                     }
@@ -93,6 +93,21 @@ struct TrainingHomeScreen: View {
                 onFinishWorkout: finalizeWorkout(with:)
             )
         }
+    }
+
+    private var primaryWorkoutButtonTitle: String {
+        Self.primaryWorkoutButtonTitle(for: workoutNotes.first)
+    }
+
+    static func primaryWorkoutButtonTitle(for draftWorkoutNote: WorkoutNote?) -> String {
+        guard
+            let draftWorkoutNote,
+            draftWorkoutNote.rawText.trimmingCharacters(in: .whitespacesAndNewlines).isEmpty == false
+        else {
+            return "开始训练"
+        }
+
+        return "继续训练"
     }
 
     private func finalizeWorkout(with finalizedRawText: String) {

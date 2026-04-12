@@ -49,6 +49,31 @@ final class QuickRepTests: XCTestCase {
         XCTAssertEqual(restoredNote.draftProgressState, expectedState)
     }
 
+    func testTrainingHomeScreenPrimaryWorkoutButtonTitleDefaultsToStartWithoutDraft() {
+        XCTAssertEqual(
+            TrainingHomeScreen.primaryWorkoutButtonTitle(for: nil),
+            "开始训练"
+        )
+    }
+
+    func testTrainingHomeScreenPrimaryWorkoutButtonTitleDefaultsToStartForEmptyDraftText() {
+        XCTAssertEqual(
+            TrainingHomeScreen.primaryWorkoutButtonTitle(
+                for: WorkoutNote(rawText: " \n\t ")
+            ),
+            "开始训练"
+        )
+    }
+
+    func testTrainingHomeScreenPrimaryWorkoutButtonTitleUsesContinueForNonEmptyDraftText() {
+        XCTAssertEqual(
+            TrainingHomeScreen.primaryWorkoutButtonTitle(
+                for: WorkoutNote(rawText: "@卧推\n20 x 8 x 5")
+            ),
+            "继续训练"
+        )
+    }
+
     func testExerciseBlockCapturesExerciseRange() {
         let block = ExerciseBlock(
             exerciseName: "卧推",
@@ -1133,6 +1158,62 @@ final class QuickRepTests: XCTestCase {
         XCTAssertEqual(persistedNotes.count, 1)
         XCTAssertEqual(persistedNotes[0].rawText, "")
         XCTAssertTrue(persistedNotes[0].draftProgressState.isEmpty)
+    }
+
+    @MainActor
+    func testTrainingHomeScreenPrimaryWorkoutButtonTitleReturnsToStartAfterFinishingWorkout() throws {
+        let container = try ModelContainer(
+            for: WorkoutNote.self,
+            WorkoutHistoryRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let modelContext = container.mainContext
+        let draftNote = WorkoutNote(rawText: "@卧推\n20 x 8 x 5")
+        modelContext.insert(draftNote)
+        try modelContext.save()
+
+        try TrainingHistoryStore.recordFinishedWorkout(
+            finalizedRawText: "@卧推\n20 x 8 x 4",
+            draftWorkoutNote: draftNote,
+            modelContext: modelContext
+        )
+
+        let persistedNote = try XCTUnwrap(
+            modelContext.fetch(FetchDescriptor<WorkoutNote>()).first
+        )
+        XCTAssertEqual(
+            TrainingHomeScreen.primaryWorkoutButtonTitle(for: persistedNote),
+            "开始训练"
+        )
+    }
+
+    @MainActor
+    func testTrainingHomeScreenPrimaryWorkoutButtonTitleStaysStartWithHistoryButNoDraft() throws {
+        let container = try ModelContainer(
+            for: WorkoutNote.self,
+            WorkoutHistoryRecord.self,
+            configurations: ModelConfiguration(isStoredInMemoryOnly: true)
+        )
+        let modelContext = container.mainContext
+        let emptyDraftNote = WorkoutNote(rawText: "")
+        let historyRecord = WorkoutHistoryRecord(rawText: "@卧推\n20 x 8 x 4")
+
+        modelContext.insert(emptyDraftNote)
+        modelContext.insert(historyRecord)
+        try modelContext.save()
+
+        let persistedDraftNote = try XCTUnwrap(
+            modelContext.fetch(FetchDescriptor<WorkoutNote>()).first
+        )
+        let persistedHistoryRecords = try modelContext.fetch(
+            FetchDescriptor<WorkoutHistoryRecord>()
+        )
+
+        XCTAssertEqual(
+            TrainingHomeScreen.primaryWorkoutButtonTitle(for: persistedDraftNote),
+            "开始训练"
+        )
+        XCTAssertEqual(persistedHistoryRecords.count, 1)
     }
 
     @MainActor
