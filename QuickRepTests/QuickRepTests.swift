@@ -226,6 +226,49 @@ final class QuickRepTests: XCTestCase {
         XCTAssertTrue(suggestions.isEmpty)
     }
 
+    func testExerciseLibraryAutocompleteSuggestionsMatchChineseNameByFullPinyin() {
+        let entries = [
+            ExerciseLibraryEntry(name: "深蹲", isBuiltin: true),
+            ExerciseLibraryEntry(name: "硬拉", isBuiltin: true),
+        ]
+
+        let suggestions = ExerciseLibraryCatalog.autocompleteSuggestions(
+            matching: "shen",
+            from: entries
+        )
+
+        XCTAssertEqual(suggestions.map(\.name), ["深蹲"])
+    }
+
+    func testExerciseLibraryAutocompleteSuggestionsMatchChineseNameByPinyinInitials() {
+        let entries = [
+            ExerciseLibraryEntry(name: "深蹲", isBuiltin: true),
+            ExerciseLibraryEntry(name: "肩推", isBuiltin: true),
+            ExerciseLibraryEntry(name: "上斜卧推", isBuiltin: false),
+        ]
+
+        let suggestions = ExerciseLibraryCatalog.autocompleteSuggestions(
+            matching: "s",
+            from: entries
+        )
+
+        XCTAssertEqual(suggestions.map(\.name), ["深蹲", "上斜卧推"])
+    }
+
+    func testExerciseLibraryAutocompleteSuggestionsKeepShowingForExactPinyinMatch() {
+        let entries = [
+            ExerciseLibraryEntry(name: "深蹲", isBuiltin: true),
+            ExerciseLibraryEntry(name: "硬拉", isBuiltin: true),
+        ]
+
+        let suggestions = ExerciseLibraryCatalog.autocompleteSuggestions(
+            matching: "shendun",
+            from: entries
+        )
+
+        XCTAssertEqual(suggestions.map(\.name), ["深蹲"])
+    }
+
     func testWorkoutNoteBuildsLineBasedTextSnapshotFromRawText() {
         let rawText = """
         @卧推
